@@ -1,0 +1,27 @@
+services:
+  db:
+    image: postgres:latest
+    container_name: postgres_temis
+    environment:
+      DATABASE_HOST: 127.0.0.1
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: Temis
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "80:80"
+    depends_on:
+      - db
+
+volumes:
+  postgres_data:

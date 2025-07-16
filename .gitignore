@@ -1,0 +1,29 @@
+# Byte-compiled Python files
+*/__pycache__/
+*.py[cod]
+
+# Log files
+*.log
+
+# Local environment files
+.env
+.env.local
+.venv/
+venv/
+virt/
+sqlite.db
+
+# IDE and editor files
+.vscode/
+.idea/
+*.iml
+
+# Operating system files
+.DS_Store
+Thumbs.db
+
+# FastAPI and Python files
+*.egg-info/
+dist/
+build/
+.ruff_cache
