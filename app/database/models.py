@@ -13,7 +13,16 @@ from sqlalchemy import (
   Text,
   TIMESTAMP,
   Float,
+  Enum,
 )
+from app.database.enums import(
+  AccountStatusEnum,
+  StatusEnum,
+  PriorityLevelEnum,
+  LegalCaseStatusEnum,
+  CaseTypeEnum,
+  InvoiceStatusEnum,
+  ) 
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from typing import Optional, Set
 
@@ -94,7 +103,14 @@ class Account(Base):
     subscription_type: Mapped[int] = mapped_column(ForeignKey("subscription.id"),nullable=False)  
     subscription_end_date: Mapped[datetime] = mapped_column(nullable=False)
     add_ons: Mapped[dict] = mapped_column(JSON, nullable=False)
-    status: Mapped[str] = mapped_column(String, nullable=False)  # Luego se reemplaza por Enum
+    
+    ##status: Mapped[str] = mapped_column(String, nullable=False)  # Luego se reemplaza por Enum
+    
+    status: Mapped[AccountStatusEnum] = mapped_column(
+        Enum(AccountStatusEnum, name="account_status", native_enum=True),
+        nullable=False,
+        default=AccountStatusEnum.RUNNING
+    )
     
     subscription:Mapped["Subscription"] = relationship(back_populates="accounts")
     users: Mapped[Set["User"]] = relationship(back_populates="account")
@@ -155,7 +171,14 @@ class User(Base):
     association:Mapped[int]=mapped_column(Integer,nullable=False,unique=True)#numero de colegiatura aun cosideramos si es factible que se quede
     phone: Mapped[str] = mapped_column(String(20), nullable=True)
     city:Mapped[str]=mapped_column(Text)
-    status: Mapped[str] = mapped_column(String(10), nullable=True)  # Luego se reemplaza por Enum
+    
+    ##status: Mapped[str] = mapped_column(String(10), nullable=True)  # Luego se reemplaza por Enum
+    
+    status: Mapped[StatusEnum] = mapped_column(
+        Enum(StatusEnum, name="user_status", native_enum=True),
+        nullable=False,
+        default=StatusEnum.INACTIVE
+    )
 
     account_id: Mapped[int] = mapped_column(ForeignKey("account.id"), nullable=False)
     role_id: Mapped[int] = mapped_column(ForeignKey("role.id"), nullable=False)
@@ -194,13 +217,36 @@ class LegalCase(Base):
     end_date: Mapped[datetime] = mapped_column(
       TIMESTAMP(timezone=True), nullable=True
     )
-    case_type: Mapped[str] = mapped_column(String(50), nullable=False)  # Luego se reemplaza por Enum
+    ##case_type: Mapped[str] = mapped_column(String(50), nullable=False)  # Luego se reemplaza por Enum
+    
+    case_type: Mapped[CaseTypeEnum] = mapped_column(
+        Enum(CaseTypeEnum, name="case_type_legal_case", native_enum=True),
+        nullable=False,
+        default=CaseTypeEnum.CIVIL
+    )
+    
     account_id: Mapped[int] = mapped_column(ForeignKey("account.id"), nullable=False)
     client_id: Mapped[int] = mapped_column(ForeignKey("client.id"), nullable=False)
     description: Mapped[Optional[str]] = mapped_column(Text)
-    priority_level: Mapped[str] = mapped_column(String(20), nullable=False)  # Luego se reemplaza por Enum
+    
+    ##priority_level: Mapped[str] = mapped_column(String(20), nullable=False)  # Luego se reemplaza por Enum
+    
+    priority_level: Mapped[PriorityLevelEnum] = mapped_column(
+        Enum(PriorityLevelEnum, name="priority_level_legal_case", native_enum=True),
+        nullable=False,
+        default=PriorityLevelEnum.NORMAL
+    )
+  
+    
     notes:Mapped[str]=mapped_column(Text)
-    status: Mapped[str] = mapped_column(String(30), nullable=False)  # Luego se reemplaza por Enum
+    
+    ##status: Mapped[str] = mapped_column(String(30), nullable=False)  # Luego se reemplaza por Enum
+    
+    status: Mapped[LegalCaseStatusEnum] = mapped_column(
+        Enum(LegalCaseStatusEnum, name="status_legal_case", native_enum=True),
+        nullable=False,
+        default=LegalCaseStatusEnum.ACTIVO
+    )
     
     client: Mapped["Client"] = relationship(back_populates="legal_cases")
     account: Mapped["Account"] = relationship(back_populates="legal_cases")
@@ -226,7 +272,14 @@ class File(Base):
     file_path: Mapped[str] = mapped_column(Text, nullable=False)
     upload_date: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), nullable=False)
     size_mb:Mapped[Float]=mapped_column(Float, nullable=False)
-    status:Mapped[str]=mapped_column(String,nullable=False) # Luego se reemplaza por Enum
+    
+    ##status:Mapped[str]=mapped_column(String,nullable=False) # Luego se reemplaza por Enum
+    
+    status: Mapped[StatusEnum] = mapped_column(
+        Enum(StatusEnum, name="file_status", native_enum=True),
+        nullable=False,
+        default=StatusEnum.INACTIVE
+    )
     
     legal_cases: Mapped[Set["LegalCase"]] = relationship(
       secondary=tbl_legal_case_x_files,
@@ -244,10 +297,12 @@ class Agenda(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     event_name: Mapped[str] = mapped_column(String(40), nullable=False)
+    description:Mapped[str]= mapped_column(Text,nullable=False)
     due_date: Mapped[datetime] = mapped_column(
       TIMESTAMP(timezone=True), nullable=True
     )
     tags: Mapped[list[str]] = mapped_column(ARRAY(String), nullable=False)
+    
     
     account_id: Mapped[int] = mapped_column(ForeignKey("account.id"), nullable=False)
     user_id: Mapped[int] = mapped_column(ForeignKey("user.id"), nullable=False)
@@ -267,7 +322,15 @@ class Invoice(Base):
     emission_date: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), nullable=False)
     due_date: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), nullable=False)
     issued_by_user_id: Mapped[int] = mapped_column(ForeignKey("user.id"), nullable=False)
-    status: Mapped[str] = mapped_column(String(20), nullable=False)  # Luego se reemplaza por Enum
+    
+    
+    ##status: Mapped[str] = mapped_column(String(20), nullable=False)  # Luego se reemplaza por Enum
+    
+    status: Mapped[InvoiceStatusEnum] = mapped_column(
+        Enum(InvoiceStatusEnum, name="invoice_status", native_enum=True),
+        nullable=False,
+        default=InvoiceStatusEnum.DUE
+    )
 
     client: Mapped["Client"] = relationship(back_populates="invoices")
     issued_by_user: Mapped["User"] = relationship(back_populates="invoices_issued")
