@@ -1,6 +1,5 @@
 # External dependencies
 from passlib.context import CryptContext
-import dotenv
 
 # Client dependencies
 from app.services.utils.hash.Hash import Hash
