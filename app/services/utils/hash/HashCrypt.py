@@ -13,4 +13,4 @@ class HashCrypt(Hash):
         return self.pwd_context.hash(content)
 
     def verify(self, content, hashed) -> bool:
-        return self.pwd_context.verify(content, hashed)
+        return self.pwd_context.verify(content, hashed, scheme="bcrypt")

@@ -3,7 +3,7 @@ from typing import Union
 
 from fastapi import FastAPI
 
-from app.routers import (auth_router)
+from app.routers import (auth_router, legal_case_router)
 
 
 app = FastAPI()
@@ -21,6 +21,7 @@ def read_item(item_id: int, q: Union[str, None] = None):
 
 
 app.include_router(auth_router.router)
+app.include_router(legal_case_router.router)
 
             
 
