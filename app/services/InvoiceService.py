@@ -1,58 +1,128 @@
+from fastapi import HTTPException
+from sqlalchemy.orm import joinedload
 from app.database.database import SessionLocal
-from app.database.models import User, LegalCase
-from app.schemas.invoicePreviewResponse import InvoicePreviewResponse, InvoiceItemPreview
+from app.database.models import User, Invoice, InvoiceItem, LegalCase, Client
+from app.schemas.createInvoiceRequest import CreateInvoiceRequest
+from app.schemas.invoiceResponse import InvoiceResponse, InvoiceItemResponse
 from app.database.enums import InvoiceStatusEnum
-from sqlalchemy import text
+from app.schemas.InvoiceUpdateResponse import InvoiceUpdateRequest, InvoiceUpdateResponse
+from datetime import date
+
 
 class InvoiceService:
-    # Supongamos que utiliza los modelos, SUPONGAMOS
-    @staticmethod
-    def get_preview_invoice(invoice_id: int, user: User) -> InvoicePreviewResponse | None:
-        with SessionLocal() as session:
-            # Obtener datos de la factura y cliente
-            result = session.execute(text("""
-                SELECT i.id, i.invoice_number, i.client_id, i.emission_date, i.due_date,
-                       i.issued_by_user_id, i.status,
-                       c.first_name, c.last_name
-                FROM invoice i
-                JOIN client c ON i.client_id = c.id
-                WHERE i.id = :invoice_id AND i.issued_by_user_id = :user_id
-            """), {"invoice_id": invoice_id, "user_id": user.id}).fetchone()
 
-            if not result:
+    @staticmethod
+    def get_preview_invoice(invoice_id: int, user: User) -> InvoiceResponse | None:
+        with SessionLocal() as session:
+            invoice = (
+                session.query(Invoice)
+                .options(joinedload(Invoice.items), joinedload(Invoice.client))
+                .filter(Invoice.id == invoice_id, Invoice.issued_by_user_id == user.id)
+                .first()
+            )
+
+            if not invoice:
                 return None
 
-            invoice_id, invoice_number, client_id, emission_date, due_date, _, status, first_name, last_name = result
-
-            # Obtener último caso legal
             legal_case = (
                 session.query(LegalCase)
-                .filter_by(client_id=client_id)
+                .filter_by(client_id=invoice.client_id)
                 .order_by(LegalCase.id.desc())
                 .first()
             )
 
-            # Obtener ítems de la factura
-            items = session.execute(text("""
-                SELECT description, hours_worked, hourly_rate
-                FROM invoice_item
-                WHERE invoice_id = :invoice_id
-            """), {"invoice_id": invoice_id}).fetchall()
+            # Status traducido
+            status_map = {
+                InvoiceStatusEnum.DUE: "Pendiente",
+                InvoiceStatusEnum.PAYED: "Pagada",
+                InvoiceStatusEnum.OVERDUE: "Vencida"
+            }
 
-            # Calcular monto total
-            total_amount = sum(item.hours_worked * item.hourly_rate for item in items)
-
-            # Construir respuesta
-            return InvoicePreviewResponse(
-                id=invoice_id,
-                client=f"{first_name} {last_name}",
-                caseNumber=legal_case.case_number if legal_case and legal_case.case_number else "N/A",
-                amount=total_amount,
-                issueDate=emission_date.strftime("%Y-%m-%d"),
-                dueDate=due_date.strftime("%Y-%m-%d"),
-                status=InvoiceStatusEnum(status).name,
+            return InvoiceResponse(
+                id=invoice.id,
+                client=f"{invoice.client.first_name} {invoice.client.last_name}",
+                case_number=str(legal_case.case_number) if legal_case and legal_case.case_number else "N/A",
+                amount=sum(item.hours_worked * item.hourly_rate for item in invoice.items),
+                issue_date=invoice.emission_date.strftime("%Y-%m-%d"),
+                due_date=invoice.due_date.strftime("%Y-%m-%d"),
+                status=status_map.get(invoice.status, "Pendiente"),
                 items=[
-                    InvoiceItemPreview(
+                    InvoiceItemResponse(
+                        name=item.description,
+                        hours=item.hours_worked,
+                        rate=item.hourly_rate
+                    )
+                    for item in invoice.items
+                ]
+            )
+            
+    @staticmethod
+    def create_preview_invoice(payload: CreateInvoiceRequest, user: User) -> InvoiceResponse:
+        with SessionLocal() as session:
+            current_year = date.today().year
+            last_invoice = (
+                session.query(Invoice)
+                .filter(Invoice.emission_date.between(f"{current_year}-01-01", f"{current_year}-12-31"))
+                .order_by(Invoice.invoice_number.desc())
+                .first()
+            )
+            next_invoice_number = (last_invoice.invoice_number + 1) if last_invoice else 1000
+
+            invoice = Invoice(
+                invoice_number=next_invoice_number,
+                client_id=payload.client_id,
+                emission_date=payload.emission_date,
+                due_date=payload.due_date,
+                issued_by_user_id=user.id,
+                status=InvoiceStatusEnum.DUE
+            )
+            session.add(invoice)
+            session.flush()
+
+            total = 0
+            items = []
+
+            for item in payload.items:
+                amount = item.hours_worked * item.hourly_rate
+                total += amount
+
+                invoice_item = InvoiceItem(
+                    invoice_id=invoice.id,
+                    description=item.description,
+                    hours_worked=item.hours_worked,
+                    hourly_rate=item.hourly_rate
+                )
+                session.add(invoice_item)
+                items.append(invoice_item)
+
+            client = session.query(Client).filter(Client.id == invoice.client_id).first()
+            legal_case = (
+                session.query(LegalCase)
+                .filter_by(client_id=invoice.client_id)
+                .order_by(LegalCase.id.desc())
+                .first()
+            )
+
+            session.commit()
+            session.refresh(invoice)
+
+            # Traducción del status
+            status_map = {
+                InvoiceStatusEnum.DUE: "Pendiente",
+                InvoiceStatusEnum.PAYED: "Pagada",
+                InvoiceStatusEnum.OVERDUE: "Vencida"
+            }
+
+            return InvoiceResponse(
+                id=invoice.id,
+                client=f"{client.first_name} {client.last_name}" if client else "N/A",
+                case_number=str(legal_case.case_number) if legal_case and legal_case.case_number else "N/A",
+                issue_date=invoice.emission_date.strftime("%Y-%m-%d"),
+                due_date=invoice.due_date.strftime("%Y-%m-%d"),
+                status=status_map.get(invoice.status, "Pendiente"),
+                amount=total,
+                items=[
+                    InvoiceItemResponse(
                         name=item.description,
                         hours=item.hours_worked,
                         rate=item.hourly_rate
@@ -60,3 +130,36 @@ class InvoiceService:
                     for item in items
                 ]
             )
+            
+    @staticmethod
+    def update_invoice_status(payload: InvoiceUpdateRequest, user: User) -> InvoiceUpdateResponse:
+        with SessionLocal() as session:
+            invoice = session.query(Invoice).filter(Invoice.id == payload.id).first()
+
+            if not invoice:
+                raise HTTPException(status_code=404, detail="Factura no encontrada")
+
+            invoice.status = payload.status
+            session.commit()
+            session.refresh(invoice)
+
+            return InvoiceUpdateResponse(
+                id=invoice.id,
+                status=invoice.status,
+                message="Estado de factura actualizado correctamente"
+            )
+            
+    @staticmethod
+    def delete_invoice(invoice_id: int, user):
+        session = SessionLocal()
+
+        invoice = session.query(Invoice).filter_by(id=invoice_id, issued_by_user_id=user.id).first()
+
+        if not invoice:
+            session.close()
+            return False
+
+        session.delete(invoice)
+        session.commit()
+        session.close()
+        return True

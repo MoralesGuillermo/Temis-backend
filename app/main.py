@@ -6,14 +6,14 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 
-from app.routers import (auth_router, legal_case_router, invoice_router)
+from app.routers import (auth_router, legal_case_router, invoice_router, notification_router)
 
 load_dotenv()
 
 # Origins for CORS
 origins = [
     "http://localhost:3000",
-    "http://ec2-78-13-106-228.mx-central-1.compute.amazonaws.com:3000"
+    "http://ec2-78-13-106-228.mx-central-1.compute.amazonaws.com:3000",
     "https://ec2-78-13-106-228.mx-central-1.compute.amazonaws.com:3000",
     "http://78.13.106.228:3000",
     "https://78.13.106.228:3000"
@@ -41,6 +41,7 @@ def read_item(item_id: int, q: Union[str, None] = None):
 app.include_router(auth_router.router)
 app.include_router(legal_case_router.router)
 app.include_router(invoice_router.router)
+app.include_router(notification_router.router)
             
 
 

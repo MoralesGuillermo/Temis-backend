@@ -42,6 +42,6 @@ class CaseTypeEnum(str, Enum):
 
 
 class InvoiceStatusEnum(str, Enum):
-    PAYED = "payed"        # Se mostrará como "Pagado" en el frontend
-    DUE = "due"            # Se mostrará como "Pendiente"
-    OVERDUE = "overdue"    # Se mostrará como "Vencida"
+    PAYED = "PAYED"        # Se mostrará como "Pagado" en el frontend
+    DUE = "DUE"            # Se mostrará como "Pendiente"
+    OVERDUE = "OVERDUE"    # Se mostrará como "Vencida"
