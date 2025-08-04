@@ -12,9 +12,9 @@ class AccountStatus(str, Enum):
     PAYMENT_DUE = "PAYMENT_DUE"
 
 class InvoiceStatus(str, Enum):
-    PAYED = "payed"
-    DUE = "due"
-    OVERDUE = "overdue"
+    PAYED = "PAYED"
+    DUE = "DUE"
+    OVERDUE = "OVERDUE"
 
 class CaseTypeLegalCase(str, Enum):
     CIVIL = "CIVIL"

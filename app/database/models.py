@@ -13,7 +13,7 @@ from sqlalchemy import (
   Text,
   TIMESTAMP,
   Float,
-  Enum
+  Enum,
 )
 from app.database.enums import(
   AccountStatusEnum,
