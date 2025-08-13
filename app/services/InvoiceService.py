@@ -8,6 +8,7 @@ from app.schemas.invoiceResponse import InvoiceResponse, InvoiceItemResponse
 from app.schemas.InvoiceSummaryResponse import InvoiceSummaryResponse, InvoiceSummaryItem, InvoiceItemDetail
 from app.schemas.ClientSummaryResponse import ClientSummaryResponse, ClientSummaryItem
 from app.schemas.InvoiceUpdateResponse import InvoiceUpdateRequest, InvoiceUpdateResponse
+from app.schemas.EditInvoiceRequest import EditInvoiceRequest, EditInvoiceResponse, InvoiceItemEdit
 from datetime import date
 
 
@@ -254,4 +255,59 @@ class InvoiceService:
             return ClientSummaryResponse(
                 clients=client_summaries,
                 total_count=len(client_summaries)
+            )
+
+    @staticmethod
+    def edit_invoice_items(payload: EditInvoiceRequest, user: User) -> EditInvoiceResponse:
+        with SessionLocal() as session:
+            # Verificar que la fact existe
+            invoice = (
+                session.query(Invoice)
+                .filter(Invoice.id == payload.invoice_id, Invoice.issued_by_user_id == user.id)
+                .first()
+            )
+            
+            if not invoice:
+                raise HTTPException(status_code=404, detail="Factura no encontrada o sin acceso")
+            
+            # Actualizar las fechas
+            invoice.emission_date = payload.emission_date
+            invoice.due_date = payload.due_date
+            
+            # Obtener todos los items
+            current_items = session.query(InvoiceItem).filter(InvoiceItem.invoice_id == payload.invoice_id).all()
+            current_item_ids = {item.id for item in current_items}
+            
+            # Verificar que todos los items pertenecen a factura
+            payload_item_ids = {item.id for item in payload.items}
+            
+            if not payload_item_ids.issubset(current_item_ids):
+                raise HTTPException(status_code=400, detail="Algunos items no pertenecen a esta factura")
+            
+            updated_items = []
+            
+            # Actualizar items
+            for item_data in payload.items:
+                item = session.query(InvoiceItem).filter(InvoiceItem.id == item_data.id).first()
+                
+                if item:
+                    item.description = item_data.description
+                    item.hours_worked = item_data.hours_worked
+                    item.hourly_rate = item_data.hourly_rate
+                    
+                    updated_items.append(InvoiceItemEdit(
+                        id=item.id,
+                        description=item.description,
+                        hours_worked=item.hours_worked,
+                        hourly_rate=item.hourly_rate
+                    ))
+            
+            session.commit()
+            
+            return EditInvoiceResponse(
+                id=invoice.id,
+                emission_date=invoice.emission_date.strftime("%Y-%m-%d"),
+                due_date=invoice.due_date.strftime("%Y-%m-%d"),
+                message="Factura actualizada correctamente",
+                updated_items=updated_items
             )

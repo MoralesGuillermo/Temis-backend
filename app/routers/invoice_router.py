@@ -4,6 +4,7 @@ from app.schemas.invoiceResponse import InvoiceResponse
 from app.schemas.InvoiceUpdateResponse import InvoiceUpdateRequest, InvoiceUpdateResponse
 from app.schemas.InvoiceSummaryResponse import InvoiceSummaryResponse
 from app.schemas.ClientSummaryResponse import ClientSummaryResponse
+from app.schemas.EditInvoiceRequest import EditInvoiceRequest, EditInvoiceResponse
 from app.services.InvoiceService import InvoiceService
 from app.services.AuthService import AuthService
 
@@ -84,3 +85,14 @@ def get_clients_for_invoice(request: Request):
     clients = InvoiceService.get_clients_for_invoice(user)
     return clients
 
+
+@router.put("/edit", response_model=EditInvoiceResponse)
+def edit_invoice_items(payload: EditInvoiceRequest, request: Request):
+    jwt = request.cookies.get("accessToken")
+    user = AuthService.get_active_user(jwt)
+
+    if not user:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="No autenticado")
+
+    response = InvoiceService.edit_invoice_items(payload, user)
+    return response
