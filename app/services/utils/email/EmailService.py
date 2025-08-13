@@ -55,5 +55,5 @@ class EmailService:
 
         except Exception as e:
             # Podés loggear el error o levantar una excepción custom
-            print(f"❌ Error al enviar correo: {e}")
+            print(f"Error al enviar correo: {e}")
             return False

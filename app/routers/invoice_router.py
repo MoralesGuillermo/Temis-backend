@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, status, HTTPException, Request
 from app.schemas.createInvoiceRequest import CreateInvoiceRequest
 from app.schemas.invoiceResponse import InvoiceResponse
 from app.schemas.InvoiceUpdateResponse import InvoiceUpdateRequest, InvoiceUpdateResponse
+from app.schemas.InvoiceSummaryResponse import InvoiceSummaryResponse
 from app.services.InvoiceService import InvoiceService
 from app.services.AuthService import AuthService
 
@@ -58,3 +59,16 @@ def delete_invoice(invoice_id: int, request: Request):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Factura no encontrada o sin acceso")
 
     return {"message": "Factura eliminada correctamente"}
+
+
+
+@router.get("/all", response_model=InvoiceSummaryResponse)
+def get_all_invoices(request: Request):
+    jwt = request.cookies.get("accessToken")
+    user = AuthService.get_active_user(jwt)
+
+    if not user:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="No autenticado")
+
+    invoices = InvoiceService.get_all_invoices(user)
+    return invoices

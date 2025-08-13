@@ -4,6 +4,7 @@ from app.database.database import SessionLocal
 from app.database.models import User, Invoice, InvoiceItem, LegalCase, Client
 from app.schemas.createInvoiceRequest import CreateInvoiceRequest
 from app.schemas.invoiceResponse import InvoiceResponse, InvoiceItemResponse
+from app.schemas.InvoiceSummaryResponse import InvoiceSummaryResponse, InvoiceSummaryItem
 from app.database.enums import InvoiceStatusEnum
 from app.schemas.InvoiceUpdateResponse import InvoiceUpdateRequest, InvoiceUpdateResponse
 from datetime import date
@@ -163,3 +164,40 @@ class InvoiceService:
         session.commit()
         session.close()
         return True
+
+    @staticmethod
+    def get_all_invoices(user: User) -> InvoiceSummaryResponse:
+        with SessionLocal() as session:
+            invoices = (
+                session.query(Invoice)
+                .options(joinedload(Invoice.client), joinedload(Invoice.items))
+                .filter(Invoice.issued_by_user_id == user.id)
+                .order_by(Invoice.emission_date.desc())
+                .all()
+            )
+
+            # Status traducido
+            status_map = {
+                InvoiceStatusEnum.DUE: "Pendiente",
+                InvoiceStatusEnum.PAYED: "Pagada",
+                InvoiceStatusEnum.OVERDUE: "Vencida"
+            }
+
+            invoice_summaries = []
+            for invoice in invoices:
+                total_amount = sum(item.hours_worked * item.hourly_rate for item in invoice.items)
+                
+                invoice_summaries.append(InvoiceSummaryItem(
+                    id=invoice.id,
+                    invoice_number=invoice.invoice_number,
+                    client_name=f"{invoice.client.first_name} {invoice.client.last_name}",
+                    emission_date=invoice.emission_date.strftime("%Y-%m-%d"),
+                    due_date=invoice.due_date.strftime("%Y-%m-%d"),
+                    status=status_map.get(invoice.status, "Pendiente"),
+                    total_amount=total_amount
+                ))
+
+            return InvoiceSummaryResponse(
+                invoices=invoice_summaries,
+                total_count=len(invoice_summaries)
+            )
