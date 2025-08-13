@@ -85,6 +85,15 @@ class LegalCaseService:
             return files[low_limit: upper_limit]
             
         
+    @staticmethod
+    def file_amount(case_id: int, user: User) -> int:
+        """Return the amount of files in a case"""
+        with SessionLocal() as session:
+            legal_case = LegalCaseService._fetch_case(case_id, user, session)
+            if not legal_case:
+                # The user doesn't have the permission to access the legal case
+                return False
+            return len(legal_case.files)
 
     @staticmethod
     def upload_file(file, case):

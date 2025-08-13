@@ -103,6 +103,20 @@ async def get_case_files_by_page(case_id: int, request: Request, page: int=0, pa
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No se encontró la página de archivos solicitada")
     return files
 
+@router.get("/files/get/amount", status_code=status.HTTP_200_OK, description="Retorna la cantidad de archivos que tiene un caso")
+async def get_case_file_amount(case_id: int, request: Request):
+    jwt = request.cookies.get("accessToken")
+    user = AuthService.get_active_user(jwt)
+    if not user:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Usuario no autenticado. Debe autenticarse para actualizar este recurso.")
+    if not LegalCaseService.case_exists(case_id):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=NOT_FOUND_MSG)
+    file_amount = LegalCaseService.file_amount(case_id, user)
+    if not file_amount:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No cuenta con los permisos para ver los archivos de este caso")
+    return {"amount": file_amount}
+
+
 
     
 
