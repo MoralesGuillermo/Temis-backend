@@ -1,6 +1,7 @@
 from typing import List
 from pydantic import BaseModel
 
+
 class InvoiceItemDetail(BaseModel):
     description: str
     hours_worked: int

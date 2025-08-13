@@ -220,6 +220,7 @@ class InvoiceService:
                     status=status_map.get(invoice.status, "Pendiente"),
                     total_amount=total_amount,
                     items=items_detail
+
                 ))
 
             return InvoiceSummaryResponse(

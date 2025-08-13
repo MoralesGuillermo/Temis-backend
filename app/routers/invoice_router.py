@@ -61,7 +61,6 @@ def delete_invoice(invoice_id: int, request: Request):
 
     return {"message": "Factura eliminada correctamente"}
 
-
 @router.get("/all", response_model=InvoiceSummaryResponse)
 def get_all_invoices(request: Request):
     jwt = request.cookies.get("accessToken")
@@ -84,3 +83,4 @@ def get_clients_for_invoice(request: Request):
 
     clients = InvoiceService.get_clients_for_invoice(user)
     return clients
+
