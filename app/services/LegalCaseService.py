@@ -16,14 +16,16 @@ class LegalCaseService:
             return session.execute(stmt).scalar() 
         
     @staticmethod
-    def get_legal_case(case_id, user: User) -> LegalCase:
+    def get_legal_case(case_id, user: User) -> LegalCaseOut:
         """Return a legal case's data"""
         with SessionLocal() as session:
             legal_case = LegalCaseService._fetch_case(case_id, user, session)
-            return legal_case
+            if not legal_case:
+                return False
+            return LegalCaseOut.model_validate(legal_case)
         
     @staticmethod
-    def update_notes(case_id: int, notes: str, user: User) -> LegalCase | bool:
+    def update_notes(case_id: int, notes: str, user: User) -> LegalCaseOut | bool:
         """Update the notes in a legal case"""
         with SessionLocal() as session:
             legal_case = LegalCaseService._fetch_case(case_id, user, session)
@@ -32,7 +34,7 @@ class LegalCaseService:
                 return False
             legal_case.notes = notes
             session.commit()
-            return LegalCaseOut.from_orm(legal_case)
+            return LegalCaseOut.model_validate(legal_case)
         
     @staticmethod
     def new_case(data: NewCaseData, user:User, files):
@@ -101,7 +103,7 @@ class LegalCaseService:
         pass
             
     @staticmethod
-    def _fetch_case(case_id, user: User, session):
+    def _fetch_case(case_id, user: User, session) -> LegalCase:
         """Fetch a case injecting a session"""
         # TODO: Add a status in legal_case_x_users to consider access management to the case.
         return session.query(LegalCase).filter(LegalCase.id == case_id, LegalCase.users.any(User.id == user.id)).first()
