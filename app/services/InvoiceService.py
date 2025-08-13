@@ -8,6 +8,9 @@ from app.schemas.InvoiceSummaryResponse import InvoiceSummaryResponse, InvoiceSu
 from app.database.enums import InvoiceStatusEnum
 from app.schemas.InvoiceUpdateResponse import InvoiceUpdateRequest, InvoiceUpdateResponse
 from datetime import date
+from app.schemas.ClientSummaryResponse import ClientSummaryResponse, ClientSummaryItem
+from app.database.models import User, Invoice, InvoiceItem, LegalCase, Client, Account
+
 
 
 class InvoiceService:
@@ -107,7 +110,7 @@ class InvoiceService:
             session.commit()
             session.refresh(invoice)
 
-            # Traducción del status
+            # Status traducido
             status_map = {
                 InvoiceStatusEnum.DUE: "Pendiente",
                 InvoiceStatusEnum.PAYED: "Pagada",
@@ -200,4 +203,32 @@ class InvoiceService:
             return InvoiceSummaryResponse(
                 invoices=invoice_summaries,
                 total_count=len(invoice_summaries)
+            )
+
+    @staticmethod
+    def get_clients_for_invoice(user: User) -> ClientSummaryResponse:
+        with SessionLocal() as session:
+            # Obtener todos los clientes asociados a la cuenta del usuario
+            clients = (
+                session.query(Client)
+                .join(Account.clients)
+                .filter(Account.id == user.account_id)
+                .order_by(Client.first_name, Client.last_name)
+                .all()
+            )
+
+            client_summaries = []
+            for client in clients:
+                client_summaries.append(ClientSummaryItem(
+                    id=client.id,
+                    first_name=client.first_name,
+                    last_name=client.last_name,
+                    email=client.email,
+                    phone_1=client.phone_1 if client.phone_1 else "",
+                    dni=client.dni
+                ))
+
+            return ClientSummaryResponse(
+                clients=client_summaries,
+                total_count=len(client_summaries)
             )
