@@ -1,6 +1,5 @@
 """Modelo para retornar un LegalCase al Front"""
 from typing import Annotated, Optional
-from datetime import datetime
 from pydantic import BaseModel, Field
 
 

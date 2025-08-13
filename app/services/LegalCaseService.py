@@ -2,7 +2,7 @@
 from sqlalchemy.sql import select, exists
 
 from app.database.database import SessionLocal
-from app.database.models import User, LegalCase
+from app.database.models import User, LegalCase, File
 from app.schemas.LegalCaseOut import LegalCaseOut
 from app.schemas.NewCaseData import NewCaseData
 from app.services.ClientService import ClientService
@@ -55,6 +55,37 @@ class LegalCaseService:
             session.commit()
             return new_case
         
+    @staticmethod
+    def get_all_files(case_id: int, user: User) -> list[File] | bool:
+        """Retrieve all the files' data of a case"""
+        with SessionLocal() as session:
+            legal_case = LegalCaseService._fetch_case(case_id, user, session)
+            if not legal_case:
+                # The user doesn't have the permission to access the legal case
+                return False
+            return legal_case.files
+        
+    @staticmethod
+    def get_files_by_page(case_id: int, user: User, page: int=0, page_size: int=10) -> list[File] | bool:
+        """Retrieve all the files' data of a case"""
+        low_limit = page_size * page
+        upper_limit = low_limit + page_size
+        with SessionLocal() as session:
+            legal_case = LegalCaseService._fetch_case(case_id, user, session)
+            if not legal_case:
+                # The user doesn't have the permission to access the legal case
+                return False
+            if len(legal_case.files) < low_limit:
+                # The requested page doesn't exist
+                return []
+            if len(legal_case.files) <= upper_limit:
+                # Send only the last remaining pages
+                upper_limit = -1
+            files = list(legal_case.files)
+            return files[low_limit: upper_limit]
+            
+        
+
     @staticmethod
     def upload_file(file, case):
         """Upload a file to a case"""
