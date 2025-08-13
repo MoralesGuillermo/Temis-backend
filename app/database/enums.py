@@ -8,9 +8,9 @@ class StatusEnum(str, Enum):
 
 
 class AccountStatusEnum(str, Enum):
-    RUNNING = "running"
-    DELETED = "deleted"
-    PAYMENT_DUE = "payment due"
+    RUNNING = "RUNNING"
+    DELETED = "DELETED"
+    PAYMENT_DUE = "PAYMENT DUE"
 
 
 class PriorityLevelEnum(str, Enum):
