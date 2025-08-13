@@ -4,6 +4,8 @@ from sqlalchemy.sql import select, exists
 from app.database.database import SessionLocal
 from app.database.models import User, LegalCase
 from app.schemas.LegalCaseOut import LegalCaseOut
+from app.schemas.NewCaseData import NewCaseData
+from app.services.ClientService import ClientService
 
 class LegalCaseService:
     @staticmethod
@@ -33,9 +35,33 @@ class LegalCaseService:
             return LegalCaseOut.from_orm(legal_case)
         
     @staticmethod
+    def new_case(data: NewCaseData, user:User, files):
+        """Create a new case in a law firm"""
+        with SessionLocal() as session:
+            client = ClientService.get_client(data.client_id, session) if data.client_id else ClientService.new_client(data.client)
+            new_client = session.add(client)
+            case = LegalCase(
+                title=data.title, 
+                start_date=data.start_date,
+                case_type=data.case_type,
+                plaintiff=data.plaintiff,
+                defendant=data.defendant,
+                description=data.description,
+                notes=data.notes,
+                client=new_client,
+                account=user.account
+            )
+            new_case = session.add(case)
+            session.commit()
+            return new_case
+        
+    @staticmethod
+    def upload_file(file, case):
+        """Upload a file to a case"""
+        pass
+            
+    @staticmethod
     def _fetch_case(case_id, user: User, session):
         """Fetch a case injecting a session"""
         # TODO: Add a status in legal_case_x_users to consider access management to the case.
         return session.query(LegalCase).filter(LegalCase.id == case_id, LegalCase.users.any(User.id == user.id)).first()
-            
-    
