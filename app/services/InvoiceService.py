@@ -1,15 +1,14 @@
 from fastapi import HTTPException
 from sqlalchemy.orm import joinedload
 from app.database.database import SessionLocal
-from app.database.models import User, Invoice, InvoiceItem, LegalCase, Client
+from app.database.models import User, Invoice, InvoiceItem, LegalCase, Client, Account
+from app.database.enums import InvoiceStatusEnum
 from app.schemas.createInvoiceRequest import CreateInvoiceRequest
 from app.schemas.invoiceResponse import InvoiceResponse, InvoiceItemResponse
-from app.schemas.InvoiceSummaryResponse import InvoiceSummaryResponse, InvoiceSummaryItem
-from app.database.enums import InvoiceStatusEnum
+from app.schemas.InvoiceSummaryResponse import InvoiceSummaryResponse, InvoiceSummaryItem, InvoiceItemDetail
+from app.schemas.ClientSummaryResponse import ClientSummaryResponse, ClientSummaryItem
 from app.schemas.InvoiceUpdateResponse import InvoiceUpdateRequest, InvoiceUpdateResponse
 from datetime import date
-from app.schemas.ClientSummaryResponse import ClientSummaryResponse, ClientSummaryItem
-from app.database.models import User, Invoice, InvoiceItem, LegalCase, Client, Account
 
 
 
@@ -188,16 +187,39 @@ class InvoiceService:
 
             invoice_summaries = []
             for invoice in invoices:
-                total_amount = sum(item.hours_worked * item.hourly_rate for item in invoice.items)
+                # Obtener el caso más reciente del cliente (lógica temporal)
+                legal_case = (
+                    session.query(LegalCase)
+                    .filter_by(client_id=invoice.client_id)
+                    .order_by(LegalCase.id.desc())
+                    .first()
+                )
+
+                # Procesar items de la factura
+                items_detail = []
+                total_amount = 0
+                
+                for item in invoice.items:
+                    item_total = item.hours_worked * item.hourly_rate
+                    total_amount += item_total
+                    
+                    items_detail.append(InvoiceItemDetail(
+                        description=item.description,
+                        hours_worked=item.hours_worked,
+                        hourly_rate=item.hourly_rate,
+                        item_total=item_total
+                    ))
                 
                 invoice_summaries.append(InvoiceSummaryItem(
                     id=invoice.id,
                     invoice_number=invoice.invoice_number,
                     client_name=f"{invoice.client.first_name} {invoice.client.last_name}",
+                    case_number=str(legal_case.case_number) if legal_case and legal_case.case_number else "N/A",
                     emission_date=invoice.emission_date.strftime("%Y-%m-%d"),
                     due_date=invoice.due_date.strftime("%Y-%m-%d"),
                     status=status_map.get(invoice.status, "Pendiente"),
-                    total_amount=total_amount
+                    total_amount=total_amount,
+                    items=items_detail
                 ))
 
             return InvoiceSummaryResponse(
