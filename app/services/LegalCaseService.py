@@ -2,7 +2,7 @@
 from sqlalchemy.sql import select, exists
 
 from app.database.database import SessionLocal
-from app.database.models import User, LegalCase
+from app.database.models import User, LegalCase, File
 from app.schemas.LegalCaseOut import LegalCaseOut
 from app.schemas.NewCaseData import NewCaseData
 from app.services.ClientService import ClientService
@@ -16,14 +16,16 @@ class LegalCaseService:
             return session.execute(stmt).scalar() 
         
     @staticmethod
-    def get_legal_case(case_id, user: User) -> LegalCase:
+    def get_legal_case(case_id, user: User) -> LegalCaseOut:
         """Return a legal case's data"""
         with SessionLocal() as session:
             legal_case = LegalCaseService._fetch_case(case_id, user, session)
-            return legal_case
+            if not legal_case:
+                return False
+            return LegalCaseOut.model_validate(legal_case)
         
     @staticmethod
-    def update_notes(case_id: int, notes: str, user: User) -> LegalCase | bool:
+    def update_notes(case_id: int, notes: str, user: User) -> LegalCaseOut | bool:
         """Update the notes in a legal case"""
         with SessionLocal() as session:
             legal_case = LegalCaseService._fetch_case(case_id, user, session)
@@ -32,7 +34,7 @@ class LegalCaseService:
                 return False
             legal_case.notes = notes
             session.commit()
-            return LegalCaseOut.from_orm(legal_case)
+            return LegalCaseOut.model_validate(legal_case)
         
     @staticmethod
     def new_case(data: NewCaseData, user:User, files):
@@ -56,12 +58,52 @@ class LegalCaseService:
             return new_case
         
     @staticmethod
+    def get_all_files(case_id: int, user: User) -> list[File] | bool:
+        """Retrieve all the files' data of a case"""
+        with SessionLocal() as session:
+            legal_case = LegalCaseService._fetch_case(case_id, user, session)
+            if not legal_case:
+                # The user doesn't have the permission to access the legal case
+                return False
+            return legal_case.files
+        
+    @staticmethod
+    def get_files_by_page(case_id: int, user: User, page: int=0, page_size: int=10) -> list[File] | bool:
+        """Retrieve all the files' data of a case"""
+        low_limit = page_size * page
+        upper_limit = low_limit + page_size
+        with SessionLocal() as session:
+            legal_case = LegalCaseService._fetch_case(case_id, user, session)
+            if not legal_case:
+                # The user doesn't have the permission to access the legal case
+                return False
+            if len(legal_case.files) < low_limit:
+                # The requested page doesn't exist
+                return []
+            if len(legal_case.files) <= upper_limit:
+                # Send only the last remaining pages
+                upper_limit = -1
+            files = list(legal_case.files)
+            return files[low_limit: upper_limit]
+            
+        
+    @staticmethod
+    def file_amount(case_id: int, user: User) -> int:
+        """Return the amount of files in a case"""
+        with SessionLocal() as session:
+            legal_case = LegalCaseService._fetch_case(case_id, user, session)
+            if not legal_case:
+                # The user doesn't have the permission to access the legal case
+                return False
+            return len(legal_case.files)
+
+    @staticmethod
     def upload_file(file, case):
         """Upload a file to a case"""
         pass
             
     @staticmethod
-    def _fetch_case(case_id, user: User, session):
+    def _fetch_case(case_id, user: User, session) -> LegalCase:
         """Fetch a case injecting a session"""
         # TODO: Add a status in legal_case_x_users to consider access management to the case.
         return session.query(LegalCase).filter(LegalCase.id == case_id, LegalCase.users.any(User.id == user.id)).first()
