@@ -3,6 +3,7 @@ from app.schemas.createInvoiceRequest import CreateInvoiceRequest
 from app.schemas.invoiceResponse import InvoiceResponse
 from app.schemas.InvoiceUpdateResponse import InvoiceUpdateRequest, InvoiceUpdateResponse
 from app.schemas.InvoiceSummaryResponse import InvoiceSummaryResponse
+from app.schemas.ClientSummaryResponse import ClientSummaryResponse
 from app.services.InvoiceService import InvoiceService
 from app.services.AuthService import AuthService
 
@@ -60,8 +61,6 @@ def delete_invoice(invoice_id: int, request: Request):
 
     return {"message": "Factura eliminada correctamente"}
 
-
-
 @router.get("/all", response_model=InvoiceSummaryResponse)
 def get_all_invoices(request: Request):
     jwt = request.cookies.get("accessToken")
@@ -72,3 +71,16 @@ def get_all_invoices(request: Request):
 
     invoices = InvoiceService.get_all_invoices(user)
     return invoices
+
+
+@router.get("/clients", response_model=ClientSummaryResponse)
+def get_clients_for_invoice(request: Request):
+    jwt = request.cookies.get("accessToken")
+    user = AuthService.get_active_user(jwt)
+
+    if not user:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="No autenticado")
+
+    clients = InvoiceService.get_clients_for_invoice(user)
+    return clients
+
