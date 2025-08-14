@@ -16,7 +16,8 @@ origins = [
     "http://ec2-78-13-106-228.mx-central-1.compute.amazonaws.com:3000",
     "https://ec2-78-13-106-228.mx-central-1.compute.amazonaws.com:3000",
     "http://78.13.106.228:3000",
-    "https://78.13.106.228:3000"
+    "https://78.13.106.228:3000",
+    "http://78.13.106.228"
     ]
 
 environment = os.getenv("ENVIRONMENT")
