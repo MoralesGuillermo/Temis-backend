@@ -19,7 +19,4 @@ class LegalCaseOut(BaseModel):
     priority_level: str
     status: str
 
-    class Config:
-        from_attributes = True
-
     
