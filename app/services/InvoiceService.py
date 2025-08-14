@@ -45,6 +45,7 @@ class InvoiceService:
             return InvoiceResponse(
                 id=invoice.id,
                 client=f"{invoice.client.first_name} {invoice.client.last_name}",
+                client_email=invoice.client.email,  # Agregado el email del cliente
                 case_number=str(legal_case.case_number) if legal_case and legal_case.case_number else "N/A",
                 amount=sum(item.hours_worked * item.hourly_rate for item in invoice.items),
                 issue_date=invoice.emission_date.strftime("%Y-%m-%d"),

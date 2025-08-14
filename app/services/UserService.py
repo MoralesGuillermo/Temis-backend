@@ -6,6 +6,7 @@ from app.database.database import SessionLocal
 from app.database.models import User, Role, Account, Subscription
 from app.schemas.UserProfileResponse import UserProfileResponse
 from app.schemas.EditProfileRequest import EditProfileRequest, EditProfileResponse, ChangePasswordRequest, ChangePasswordResponse
+from app.schemas.RegisterUserRequest import RegisterUserRequest, RegisterUserResponse
 from app.services.utils.hash.HashCrypt import HashCrypt
 
 class UserService:
@@ -109,4 +110,71 @@ class UserService:
             
             return ChangePasswordResponse(
                 message="Contraseña cambiada correctamente"
+            )
+
+    @staticmethod
+    def register_user(payload: RegisterUserRequest, current_user: User) -> RegisterUserResponse:
+        """Register a new user in the same account as the current user"""
+        with SessionLocal() as session:
+            # DNI único
+            existing_dni = session.query(User).filter(User.dni == payload.dni).first()
+            if existing_dni:
+                raise HTTPException(status_code=400, detail="El DNI ya está registrado")
+            
+            # username único
+            existing_username = session.query(User).filter(User.username == payload.username).first()
+            if existing_username:
+                raise HTTPException(status_code=400, detail="El nombre de usuario ya está en uso")
+            
+            # email único
+            existing_email = session.query(User).filter(User.email == payload.email).first()
+            if existing_email:
+                raise HTTPException(status_code=400, detail="El email ya está registrado")
+            
+            # número de asociación único (esto debe ser así?)
+            existing_association = session.query(User).filter(User.association == payload.association).first()
+            if existing_association:
+                raise HTTPException(status_code=400, detail="El número de colegiatura ya está registrado")
+            
+            # rol existe
+            role = session.query(Role).filter(Role.id == payload.role_id).first()
+            if not role:
+                raise HTTPException(status_code=400, detail="El rol especificado no existe")
+            
+            # Hashear la contraseña
+            hash_service = HashCrypt()
+            hashed_password = hash_service.hash(payload.password)
+            
+            # Crear el nuevo usuario
+            new_user = User(
+                dni=payload.dni,
+                username=payload.username,
+                password=hashed_password,
+                email=payload.email,
+                first_name=payload.first_name,
+                last_name=payload.last_name,
+                association=payload.association,
+                phone=payload.phone,
+                city=payload.city,
+                status=StatusEnum.ACTIVE,
+                account_id=current_user.account_id,  # Mismo account que el usuario actual (modificar despues)
+                role_id=payload.role_id
+            )
+            
+            session.add(new_user)
+            session.commit()
+            session.refresh(new_user)
+            
+            return RegisterUserResponse(
+                id=new_user.id,
+                dni=new_user.dni,
+                username=new_user.username,
+                email=new_user.email,
+                first_name=new_user.first_name,
+                last_name=new_user.last_name,
+                association=new_user.association,
+                phone=new_user.phone,
+                city=new_user.city,
+                role_name=role.name,
+                message="Usuario registrado correctamente"
             )
