@@ -205,6 +205,7 @@ class InvoiceService:
                     total_amount += item_total
                     
                     items_detail.append(InvoiceItemDetail(
+                        id=item.id,
                         description=item.description,
                         hours_worked=item.hours_worked,
                         hourly_rate=item.hourly_rate,
