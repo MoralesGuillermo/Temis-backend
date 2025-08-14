@@ -24,5 +24,5 @@ def authenticate(credentials: Annotated[OAuth2PasswordRequestForm, Depends()], r
     token_expiry = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES"))
     jwt_token = JWTService.generate_token(data={"sub": str(user)}, expires_delta=token_expiry)
     # TODO: Get HTTPS certificate on site to send credentials to frontend. After that, activate secure=True
-    response.set_cookie(key="accessToken", value=jwt_token, httponly=True, secure=False, samesite="lax")
+    response.set_cookie(key="accessToken", value=jwt_token, httponly=True, secure=True, samesite="none")
     return user
