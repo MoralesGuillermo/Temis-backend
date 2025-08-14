@@ -23,5 +23,6 @@ def authenticate(credentials: Annotated[OAuth2PasswordRequestForm, Depends()], r
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Usuario o contraseña incorrectos")
     token_expiry = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES"))
     jwt_token = JWTService.generate_token(data={"sub": str(user)}, expires_delta=token_expiry)
-    response.set_cookie(key="accessToken", value=jwt_token, httponly=True, secure=True, samesite="strict")
+    # TODO: Get HTTPS certificate on site to send credentials to frontend. After that, activate secure=True
+    response.set_cookie(key="accessToken", value=jwt_token, httponly=True, secure=False, samesite="strict")
     return user
