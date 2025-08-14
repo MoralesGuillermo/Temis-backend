@@ -10,6 +10,7 @@ class InvoiceItemResponse(BaseModel):
 class InvoiceResponse(BaseModel):
     id: int
     client: str
+    client_email: str
     case_number: str
     issue_date: str
     due_date: str
