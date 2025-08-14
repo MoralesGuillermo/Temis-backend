@@ -74,6 +74,48 @@ async def update_legal_case_notes(case_update: LegalCaseNotesUpdate, request: Re
     return updated_case
 
 
+# Endpoint para obtener todos los casos del usuario
+@router.get("/cases", status_code=status.HTTP_200_OK, description="Obtiene todos los casos del usuario autenticado")
+def get_all_user_cases(request: Request):
+    jwt = request.cookies.get("accessToken")
+    user = AuthService.get_active_user(jwt)
+    if not user:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=UNAUTHORIZED_MSG)
+    
+    # Obtener todos los casos del usuario
+    cases = LegalCaseService.get_all_cases(user)
+    return cases
+
+# Endpoint para obtener métricas de casos del usuario
+@router.get("/cases/metrics", status_code=status.HTTP_200_OK, description="Obtiene las métricas de casos del usuario")
+def get_cases_metrics(request: Request):
+    jwt = request.cookies.get("accessToken")
+    user = AuthService.get_active_user(jwt)
+    if not user:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Usuario no autenticado.")
+    
+    # Obtener métricas de casos del usuario
+    metrics = LegalCaseService.get_cases_metrics(user)
+    return metrics
+
+# Endpoint para actualizar un caso completo (no solo las notas)
+@router.put("/cases/{case_id}", status_code=status.HTTP_200_OK, response_model=LegalCaseOut, description="Actualiza un caso completo")
+async def update_case(case_id: int, case_update: dict, request: Request):
+    jwt = request.cookies.get("accessToken")
+    user = AuthService.get_active_user(jwt)
+    if not user:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=UNAUTHORIZED_MSG)
+    
+    if not LegalCaseService.case_exists(case_id):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No se encontró el caso peticionado.")
+    
+    updated_case = LegalCaseService.update_case(case_id, case_update, user)
+    if not updated_case:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No cuenta con los permisos para actualizar este caso.")
+    
+    return updated_case
+
+
 
 
 

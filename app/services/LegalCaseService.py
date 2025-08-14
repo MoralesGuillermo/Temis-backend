@@ -32,7 +32,7 @@ class LegalCaseService:
                 return False
             legal_case.notes = notes
             session.commit()
-            return LegalCaseOut.from_orm(legal_case)
+            return LegalCaseOut.model_validate(legal_case)
         
     @staticmethod
     def new_case(data: NewCaseData, user:User, files):
@@ -54,6 +54,55 @@ class LegalCaseService:
             new_case = session.add(case)
             session.commit()
             return new_case
+    
+    @staticmethod
+    def get_all_cases(user: User):
+        """Obtiene todos los casos del usuario"""
+        with SessionLocal() as session:
+            cases = session.query(LegalCase).filter(
+                LegalCase.users.any(User.id == user.id)
+            ).all()
+            return [LegalCaseOut.model_validate(case) for case in cases]
+
+    @staticmethod
+    def get_cases_metrics(user: User):
+        """Obtiene las métricas de casos del usuario"""
+        with SessionLocal() as session:
+            # Obtener todos los casos del usuario
+            cases = session.query(LegalCase).filter(
+                LegalCase.users.any(User.id == user.id)
+            ).all()
+            
+            # Calcular métricas
+            total = len(cases)
+            active = len([c for c in cases if c.status == 'activo'])
+            urgent = len([c for c in cases if c.status == 'urgente'])
+            pending = len([c for c in cases if c.status == 'pendiente'])
+            
+            return {
+                "total": total,
+                "active": active,
+                "urgent": urgent,
+                "pending": pending
+            }
+
+    @staticmethod
+    def update_case(case_id: int, case_data: dict, user: User):
+        """Actualiza un caso completo"""
+        with SessionLocal() as session:
+            legal_case = LegalCaseService._fetch_case(case_id, user, session)
+            if not legal_case:
+                return False
+            
+            # Actualizar campos permitidos
+            allowed_fields = ['title', 'case_type', 'status', 'priority_level', 'description', 'notes', 'end_date']
+            
+            for field, value in case_data.items():
+                if field in allowed_fields and hasattr(legal_case, field):
+                    setattr(legal_case, field, value)
+            
+            session.commit()
+            return LegalCaseOut.model_validate(legal_case)
         
     @staticmethod
     def upload_file(file, case):
