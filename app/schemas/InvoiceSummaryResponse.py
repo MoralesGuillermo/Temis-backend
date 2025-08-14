@@ -3,6 +3,7 @@ from pydantic import BaseModel
 
 
 class InvoiceItemDetail(BaseModel):
+    id: int
     description: str
     hours_worked: int
     hourly_rate: float
