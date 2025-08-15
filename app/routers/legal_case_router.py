@@ -151,7 +151,7 @@ async def get_case_file_amount(case_id: int, request: Request):
 
 
 @router.post("/file/upload", status_code=status.HTTP_200_OK, response_model=FileOut, description="Guarda y sube un archivo en la DB y el Blob Storage")
-async def get_case_file_amount(case_id: int,  request: Request, file: UploadFile = File(...)):
+async def upload_file(case_id: int,  request: Request, file: UploadFile = File(...)):
     jwt = request.cookies.get("accessToken")
     user = AuthService.get_active_user(jwt)
     if not user:
@@ -177,7 +177,7 @@ async def get_case_file_amount(case_id: int,  request: Request, file: UploadFile
 
 
 @router.get("/file/get", status_code=status.HTTP_200_OK, description="Consigue un archivo desde el Blob Storage")
-async def get_case_file_amount(case_id: int, file_id, request: Request):
+async def get_file(case_id: int, file_id, request: Request):
     jwt = request.cookies.get("accessToken")
     user = AuthService.get_active_user(jwt)
     if not user:
