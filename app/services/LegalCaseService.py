@@ -2,12 +2,18 @@
 from sqlalchemy.sql import select, exists
 from fastapi import UploadFile
 
+# In-built dependencies
+from datetime import datetime
+
+
 from app.database.database import SessionLocal
 from app.database.models import User, LegalCase, File
 from app.schemas.LegalCaseOut import LegalCaseOut
+from app.schemas.FileOut import FileOut
 from app.schemas.NewCaseData import NewCaseData
 from app.services.ClientService import ClientService
 from app.services.utils.storage.Storage import Storage
+from app.database.enums import StatusEnum
 
 class LegalCaseService:
     @staticmethod
@@ -156,12 +162,8 @@ class LegalCaseService:
     @staticmethod
     def upload_file_to_storage(filename,  file: UploadFile, storage: Storage) -> bool:
         """Upload to a blob storage"""
-        try:
-            storage.upload()
-            return True
-        except Exception:
-            # Something failed when uploading file to storage
-            return False
+        response = storage.upload(file.file, filename)
+        return response
         
     @staticmethod
     def has_available_storage(case_id: int, file: UploadFile) -> bool:
@@ -173,7 +175,7 @@ class LegalCaseService:
     def file_exists(case_id: int, file: UploadFile) -> bool:
         """Check if the file already exists in the case"""
         with SessionLocal() as sesssion:
-            return sesssion.query(LegalCase).filter(LegalCase.id == case_id, LegalCase.Files.any(File.file_name == file.filename))
+            return sesssion.query(LegalCase).filter(LegalCase.id == case_id, LegalCase.files.any(File.file_name == file.filename)).first()
         
     @staticmethod
     def get_file(file_id: int, storage: Storage):    
@@ -186,6 +188,25 @@ class LegalCaseService:
         if not file_stream:
             return False, False, False
         return file_stream, content_type, filename
+    
+    @staticmethod
+    def save_file(case_id: int,  user: User, file: UploadFile):
+        """Save a files's data in DB"""
+        with SessionLocal() as session:
+            file = File(
+                file_name = file.filename,
+                file_path = f"{case_id}/{file.filename}",
+                upload_date=datetime.now(),
+                status=StatusEnum.ACTIVE,
+                # Save the size of the file in MB
+                size_mb= float(file.size / 1024)
+            )
+            legal_case = LegalCaseService._fetch_case(case_id, user, session)
+            legal_case.files.add(file)
+            session.add(file)
+            session.commit()
+            return FileOut.model_validate(file)
+
             
     @staticmethod
     def _fetch_case(case_id, user: User, session) -> LegalCase:

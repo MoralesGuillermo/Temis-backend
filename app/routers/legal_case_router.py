@@ -53,18 +53,6 @@ def new_case(new_case_data: NewCaseData, request: Request):
     return new_case
 
 
-@router.post("/upload", status_code=status.HTTP_200_OK, response_model=LegalCaseOut, description="Sube un archivo a un caso")
-def new_case(case_id: int, file: UploadFile, request: Request):
-    jwt = request.cookies.get("accessToken")
-    user = AuthService.get_active_user(jwt)
-    if not user:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=UNAUTHORIZED_MSG)
-    if not LegalCaseService.case_exists(case_id):
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=NOT_FOUND_MSG)
-    # TODO: Make logic to upload file to Storage service and assign its url to the legal case
-    pass
-
-
 @router.put("/update/notes", status_code=status.HTTP_200_OK, response_model=LegalCaseOut, description="Actualiza las notas de un caso legal si el usuario tiene los permisos")
 async def update_legal_case_notes(case_update: LegalCaseNotesUpdate, request: Request):
     jwt = request.cookies.get("accessToken")
@@ -162,8 +150,8 @@ async def get_case_file_amount(case_id: int, request: Request):
     return {"amount": file_amount}
 
 
-@router.post("/file/upload", status_code=status.HTTP_200_OK, description="Guarda y sube un archivo en la DB y el Blob Storage")
-async def get_case_file_amount(case_id: int, file: Annotated[UploadFile, File()], request: Request):
+@router.post("/file/upload", status_code=status.HTTP_200_OK, response_model=FileOut, description="Guarda y sube un archivo en la DB y el Blob Storage")
+async def get_case_file_amount(case_id: int,  request: Request, file: UploadFile = File(...)):
     jwt = request.cookies.get("accessToken")
     user = AuthService.get_active_user(jwt)
     if not user:
@@ -176,14 +164,16 @@ async def get_case_file_amount(case_id: int, file: Annotated[UploadFile, File()]
         raise HTTPException(status_code=status.HTTP_507_INSUFFICIENT_STORAGE, 
                             detail="No cuenta con la cantidad suficiente de almacenamiento. Puede mejorar su plan de almacenamiento de Temis Software!"
         )
-    if LegalCaseService.file_exists(case_id, user,  file.filename):
+    if LegalCaseService.file_exists(case_id, file):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Un archivo con ese nombre ya existe en este caso.")
     # Name used in the blob storage
+    print(file.filename)
     object_name = f"{case_id}/{file.filename}"
-    response = LegalCaseService.upload_file_storage(object_name,  file)
-    if not response:
+    file_was_uploaded = LegalCaseService.upload_file_to_storage(object_name,  file, STORAGE)
+    if not file_was_uploaded:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="No se pudo guardar el archivo en la nube. Favor intente mas tarde.")
-    # Guardar los datos del archivo en la base de datos
+    saved_file = LegalCaseService.save_file(case_id, user, file)
+    return saved_file
 
 
 @router.get("/file/get", status_code=status.HTTP_200_OK, description="Consigue un archivo desde el Blob Storage")
@@ -196,11 +186,10 @@ async def get_case_file_amount(case_id: int, file_id, request: Request):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=NOT_FOUND_MSG)
     if not LegalCaseService.authorized_user(case_id, user):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=UNAUTHORIZED_MSG)
-    file_stream, content_type, filename = LegalCaseService.get_file(file_id, STORAGE)
+    file_stream, content_type = LegalCaseService.get_file(file_id, STORAGE)
     if not file_stream:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No se encontró el archivo")
-    headers = {"Content-Disposition": f"attachment; filename='{filename}'"}
-    return StreamingResponse(file_stream, media_type=content_type, headers=headers)
+    return StreamingResponse(file_stream, media_type=content_type)
         
 
 

@@ -39,10 +39,12 @@ class AWSStorage(Storage):
     def upload(self, file, object_name):
         """Upload a file to the blob storage"""
         if not object_name:
-            object_name = file.filename
+            object_name = file.name
         try:
-            response = self.storage.upload_fileobj(file.file, self.bucket, object_name)
+            # Restart the file stream
+            file.seek(0)
+            self.storage.upload_fileobj(file, self.bucket, object_name)
         except ClientError:
             return False
-        return response
+        return True
         
