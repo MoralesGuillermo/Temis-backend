@@ -1,5 +1,6 @@
 from datetime import datetime
 from decimal import Decimal
+from sqlalchemy.dialects.postgresql import ARRAY as PG_ARRAY
 from sqlalchemy import (
   ARRAY,
   Boolean,
@@ -301,7 +302,7 @@ class Agenda(Base):
     due_date: Mapped[datetime] = mapped_column(
       TIMESTAMP(timezone=True), nullable=True
     )
-    tags: Mapped[list[str]] = mapped_column(ARRAY(String), nullable=False)
+    tags: Mapped[list[str]] = mapped_column(PG_ARRAY(String), nullable=False)
     
     
     account_id: Mapped[int] = mapped_column(ForeignKey("account.id"), nullable=False)
