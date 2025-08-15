@@ -22,13 +22,9 @@ class ClientService:
         return Client(
             first_name=data.first_name, 
             last_name=data.last_name,
-            phone_1=data.phone,
+            phone_1=data.phone_1,
             email=data.email,
             dni=data.dni,
             gender="N/A",
             address=data.address
         )
-        
-    
-            
-    
