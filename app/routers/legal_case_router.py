@@ -1,7 +1,8 @@
 from typing import Annotated, List, Optional
 
 # External dependencies
-from fastapi import HTTPException, status, Response, APIRouter, Request, UploadFile, Form
+from fastapi import HTTPException, status, Response, APIRouter, Request, UploadFile, File
+from fastapi.responses import StreamingResponse
 
 # Client Dependencies
 from app.services.LegalCaseService import LegalCaseService
@@ -10,7 +11,10 @@ from app.schemas.LegalCaseNotesUpdate import LegalCaseNotesUpdate
 from app.schemas.LegalCaseOut import LegalCaseOut
 from app.schemas.FileOut import FileOut
 from app.schemas.NewCaseData import NewCaseData
+from app.services.utils.storage.AWSStorage import AWSStorage
 
+# Blob storage
+STORAGE = AWSStorage()
 
 # Message Constants
 UNAUTHORIZED_MSG = "Usuario no autenticado. Debe inicar sesión para poder visualizar este recurso."
@@ -158,6 +162,46 @@ async def get_case_file_amount(case_id: int, request: Request):
     return {"amount": file_amount}
 
 
+@router.post("/file/upload", status_code=status.HTTP_200_OK, description="Guarda y sube un archivo en la DB y el Blob Storage")
+async def get_case_file_amount(case_id: int, file: Annotated[UploadFile, File()], request: Request):
+    jwt = request.cookies.get("accessToken")
+    user = AuthService.get_active_user(jwt)
+    if not user:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Usuario no autenticado. Debe autenticarse para actualizar este recurso.")
+    if not LegalCaseService.case_exists(case_id):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=NOT_FOUND_MSG)
+    if not LegalCaseService.authorized_user(case_id, user):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=UNAUTHORIZED_MSG)
+    if not LegalCaseService.has_available_storage(case_id, file):
+        raise HTTPException(status_code=status.HTTP_507_INSUFFICIENT_STORAGE, 
+                            detail="No cuenta con la cantidad suficiente de almacenamiento. Puede mejorar su plan de almacenamiento de Temis Software!"
+        )
+    if LegalCaseService.file_exists(case_id, user,  file.filename):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Un archivo con ese nombre ya existe en este caso.")
+    # Name used in the blob storage
+    object_name = f"{case_id}/{file.filename}"
+    response = LegalCaseService.upload_file_storage(object_name,  file)
+    if not response:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="No se pudo guardar el archivo en la nube. Favor intente mas tarde.")
+    # Guardar los datos del archivo en la base de datos
+
+
+@router.get("/file/get", status_code=status.HTTP_200_OK, description="Consigue un archivo desde el Blob Storage")
+async def get_case_file_amount(case_id: int, file_id, request: Request):
+    jwt = request.cookies.get("accessToken")
+    user = AuthService.get_active_user(jwt)
+    if not user:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Usuario no autenticado. Debe autenticarse para actualizar este recurso.")
+    if not LegalCaseService.case_exists(case_id):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=NOT_FOUND_MSG)
+    if not LegalCaseService.authorized_user(case_id, user):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=UNAUTHORIZED_MSG)
+    file_stream, content_type, filename = LegalCaseService.get_file(file_id, STORAGE)
+    if not file_stream:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No se encontró el archivo")
+    headers = {"Content-Disposition": f"attachment; filename='{filename}'"}
+    return StreamingResponse(file_stream, media_type=content_type, headers=headers)
+        
 
 
 
