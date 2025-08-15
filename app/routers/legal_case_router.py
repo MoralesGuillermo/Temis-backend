@@ -47,9 +47,12 @@ def new_case(new_case_data: NewCaseData, request: Request):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=UNAUTHORIZED_MSG)
     if not new_case_data.client_id and not new_case_data.client:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No se recibió un cliente para asignarlo al caso")
-    new_case = LegalCaseService.new_case(new_case_data, user)
+    
+    # AGREGAR EL PARÁMETRO files=None
+    new_case = LegalCaseService.new_case(new_case_data, user, files=None)
+    
     if not new_case:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No se pudo crear el caso. Porfavor vuelva a intentarlo y verifique los datos")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No se pudo crear el caso. Por favor vuelva a intentarlo y verifique los datos")
     return new_case
 
 
