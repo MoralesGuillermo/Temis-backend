@@ -6,7 +6,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 
-from app.routers import (auth_router, legal_case_router, invoice_router, notification_router, user_router, agenda_router)
+from app.routers import (auth_router, legal_case_router, invoice_router, notification_router, user_router, agenda_router,dashboard_router)
 
 load_dotenv()
 
@@ -46,4 +46,4 @@ app.include_router(invoice_router.router)
 app.include_router(notification_router.router)
 app.include_router(user_router.router)
 app.include_router(agenda_router.router)
-
+app.include_router(dashboard_router.router)
