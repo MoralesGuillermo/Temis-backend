@@ -217,6 +217,7 @@ class InvoiceService:
                     id=invoice.id,
                     invoice_number=invoice.invoice_number,
                     client_name=f"{invoice.client.first_name} {invoice.client.last_name}",
+                    client_email=invoice.client.email,  # Agregado el email del cliente
                     case_number=str(legal_case.case_number) if legal_case and legal_case.case_number else "N/A",
                     emission_date=invoice.emission_date.strftime("%Y-%m-%d"),
                     due_date=invoice.due_date.strftime("%Y-%m-%d"),

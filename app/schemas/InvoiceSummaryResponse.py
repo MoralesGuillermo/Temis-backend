@@ -13,6 +13,7 @@ class InvoiceSummaryItem(BaseModel):
     id: int
     invoice_number: int
     client_name: str
+    client_email: str
     case_number: str
     emission_date: str
     due_date: str
