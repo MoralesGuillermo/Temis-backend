@@ -51,25 +51,43 @@ class LegalCaseService:
             return LegalCaseOut.model_validate(legal_case)
         
     @staticmethod
-    def new_case(data: NewCaseData, user:User, files):
+    def new_case(data: NewCaseData, user: User, files=None):
         """Create a new case in a law firm"""
         with SessionLocal() as session:
-            client = ClientService.get_client(data.client_id, session) if data.client_id else ClientService.new_client(data.client)
-            new_client = session.add(client)
-            case = LegalCase(
-                title=data.title, 
-                start_date=data.start_date,
-                case_type=data.case_type,
-                plaintiff=data.plaintiff,
-                defendant=data.defendant,
-                description=data.description,
-                notes=data.notes,
-                client=new_client,
-                account=user.account
-            )
-            new_case = session.add(case)
-            session.commit()
-            return new_case
+            # Obtener o crear cliente
+            if data.client_id:
+                client = ClientService.get_client(data.client_id, session)
+            else:
+                client = ClientService.new_client(data.client)
+        
+        session.add(client)
+        session.flush()  # Para obtener el ID del cliente
+        
+        # OBTENER EL USUARIO EN LA SESIÓN ACTUAL
+        current_user = session.get(User, user.id)
+        if not current_user:
+            raise ValueError("Usuario no encontrado")
+        
+        # Crear el caso usando account_id directamente
+        case = LegalCase(
+            title=data.title,
+            start_date=data.start_date,
+            case_type=data.case_type,
+            description=data.description,
+            notes=data.notes or '',
+            client=client,
+            account_id=user.account_id
+        )
+        
+        session.add(case)
+        session.flush()  # Para obtener el ID del caso
+        
+        case.users.add(current_user)
+        
+        session.commit()
+        session.refresh(case)
+        
+        return LegalCaseOut.model_validate(case)
     
     @staticmethod
     def get_all_cases(user: User):

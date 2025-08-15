@@ -18,8 +18,8 @@ class NewCaseData(BaseModel):
     title: Annotated[str, Field(min_length=1, max_length=100)]
     start_date: datetime
     case_type: Annotated[CaseTypeEnum, "Tipo de caso"]
-    plaintiff: str
-    defendant: str
+    # plaintiff: str
+    # defendant: str
     description: Optional[str]
     notes: Optional[str]
     client_id: Optional[int] = None
