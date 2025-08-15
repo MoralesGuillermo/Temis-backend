@@ -1,11 +1,19 @@
 """Legal case management service"""
 from sqlalchemy.sql import select, exists
+from fastapi import UploadFile
+
+# In-built dependencies
+from datetime import datetime
+
 
 from app.database.database import SessionLocal
 from app.database.models import User, LegalCase, File
 from app.schemas.LegalCaseOut import LegalCaseOut
+from app.schemas.FileOut import FileOut
 from app.schemas.NewCaseData import NewCaseData
 from app.services.ClientService import ClientService
+from app.services.utils.storage.Storage import Storage
+from app.database.enums import StatusEnum
 
 class LegalCaseService:
     @staticmethod
@@ -13,10 +21,16 @@ class LegalCaseService:
         """Check if a case exists"""
         with SessionLocal() as session:
             stmt = select(exists().where(LegalCase.id == case_id))
-            return session.execute(stmt).scalar() 
+            return session.execute(stmt).scalar()
         
     @staticmethod
-    def get_legal_case(case_id, user: User) -> LegalCaseOut:
+    def authorized_user(case_id: int, user: User) -> bool:
+        """Check if a user is authorized to interact with a case"""
+        with SessionLocal() as session:
+            return True if LegalCaseService._fetch_case(case_id, user, session) else False
+    
+    @staticmethod
+    def get_legal_case(case_id, user: User) -> LegalCase:
         """Return a legal case's data"""
         with SessionLocal() as session:
             legal_case = LegalCaseService._fetch_case(case_id, user, session)
@@ -146,9 +160,53 @@ class LegalCaseService:
             return len(legal_case.files)
         
     @staticmethod
-    def upload_file(file, case):
-        """Upload a file to a case"""
-        pass
+    def upload_file_to_storage(filename,  file: UploadFile, storage: Storage) -> bool:
+        """Upload to a blob storage"""
+        response = storage.upload(file.file, filename)
+        return response
+        
+    @staticmethod
+    def has_available_storage(case_id: int, file: UploadFile) -> bool:
+        """Check if the account has available storage to upload files"""
+        # TODO: Check if the account has available storage
+        return True
+    
+    @staticmethod
+    def file_exists(case_id: int, file: UploadFile) -> bool:
+        """Check if the file already exists in the case"""
+        with SessionLocal() as sesssion:
+            return sesssion.query(LegalCase).filter(LegalCase.id == case_id, LegalCase.files.any(File.file_name == file.filename)).first()
+        
+    @staticmethod
+    def get_file(file_id: int, storage: Storage):    
+        """Get a file from the given Blob Storage"""
+        with SessionLocal() as session:
+            file = session.query(File).filter(File.id == file_id).first()
+            filepath = file.file_path
+            filename = file.file_name
+        file_stream, content_type = storage.get(filepath)
+        if not file_stream:
+            return False, False, False
+        return file_stream, content_type, filename
+    
+    @staticmethod
+    def save_file(case_id: int,  user: User, file: UploadFile):
+        """Save a files's data in DB"""
+        with SessionLocal() as session:
+            file = File(
+                file_name = file.filename,
+                file_path = f"{case_id}/{file.filename}",
+                upload_date=datetime.now(),
+                status=StatusEnum.ACTIVE,
+                # Save the size of the file in MB
+                size_mb= float(file.size / 1024)
+            )
+            legal_case = LegalCaseService._fetch_case(case_id, user, session)
+            legal_case.files.add(file)
+            session.add(file)
+            session.commit()
+            return FileOut.model_validate(file)
+
             
     @staticmethod
     def _fetch_case(case_id, user: User, session) -> LegalCase:
