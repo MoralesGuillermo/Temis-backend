@@ -145,7 +145,7 @@ async def get_case_file_amount(case_id: int, request: Request):
     if not LegalCaseService.case_exists(case_id):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=NOT_FOUND_MSG)
     file_amount = LegalCaseService.file_amount(case_id, user)
-    if not file_amount:
+    if file_amount is False:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No cuenta con los permisos para ver los archivos de este caso")
     return {"amount": file_amount}
 
