@@ -206,7 +206,7 @@ class LegalCaseService:
         file_stream, content_type = storage.get(filepath)
         if not file_stream:
             return False, False
-        return file_stream, content_type, filename
+        return file_stream, content_type
     
     @staticmethod
     def save_file(case_id: int,  user: User, file: UploadFile):
