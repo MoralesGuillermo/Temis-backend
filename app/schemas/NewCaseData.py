@@ -13,7 +13,7 @@ class NewCaseData(BaseModel):
         phone_1: str
         email: EmailStr
         dni: str
-        addresss: str
+        address: str
 
     title: Annotated[str, Field(min_length=1, max_length=100)]
     start_date: datetime

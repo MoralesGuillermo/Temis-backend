@@ -85,6 +85,7 @@ class LegalCaseService:
         case.users.add(current_user)
         
         session.commit()
+        print("Commit exitoso - Usuario asociado al caso")
         session.refresh(case)
         
         return LegalCaseOut.model_validate(case)
