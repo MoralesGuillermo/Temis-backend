@@ -1,7 +1,8 @@
 """Dashboard service - centraliza lógica del dashboard"""
 from sqlalchemy.orm import joinedload
+from datetime import datetime, date  # ← ASEGURAR QUE ESTA IMPORTACIÓN ESTÉ
 from app.database.database import SessionLocal
-from app.database.models import User, LegalCase, Invoice
+from app.database.models import User, LegalCase, Invoice, Agenda  # ← ASEGURAR QUE Agenda ESTÉ
 from app.database.enums import InvoiceStatusEnum
 
 class DashboardService:
@@ -23,11 +24,28 @@ class DashboardService:
                 .all()
             )
             
+            # AGREGAR ESTA SECCIÓN COMPLETA:
+            # Obtener eventos de hoy del usuario
+            today = date.today()
+            start_of_day = datetime.combine(today, datetime.min.time())
+            end_of_day = datetime.combine(today, datetime.max.time())
+            
+            today_events = (
+                session.query(Agenda)
+                .filter(
+                    Agenda.user_id == user.id,
+                    Agenda.account_id == user.account_id,
+                    Agenda.due_date >= start_of_day,
+                    Agenda.due_date <= end_of_day
+                )
+                .all()
+            )
+            
             # Calcular métricas
             active_cases = len([c for c in user_cases if c.status.lower() == "activo"])
             urgent_tasks = len([c for c in user_cases if c.status.lower() == "urgente"])
             pending_invoices = len([i for i in user_invoices if i.status == InvoiceStatusEnum.DUE])
-            today_appointments = 0
+            today_appointments = len(today_events)  # ← AHORA ESTA VARIABLE SÍ EXISTE
             
             return {
                 "active_cases": active_cases,
