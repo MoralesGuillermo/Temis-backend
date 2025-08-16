@@ -2,6 +2,8 @@
 from datetime import datetime
 from typing import List, Optional
 from pydantic import BaseModel, Field, ConfigDict
+from datetime import date
+
 
 class AgendaCreate(BaseModel):
     event_name: str = Field(..., min_length=1, max_length=40)
@@ -25,3 +27,6 @@ class AgendaUpdate(BaseModel):
     description: Optional[str] = Field(None, min_length=1)
     due_date: Optional[datetime] = None            
     tags: Optional[List[str]] = None               
+
+class FirstMeetingIn(BaseModel):
+    meeting_date: date = Field(..., description="Solo la fecha (AAAA-MM-DD)")

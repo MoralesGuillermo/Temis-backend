@@ -5,7 +5,7 @@ from fastapi import APIRouter, HTTPException, status, Request, Query
 
 from app.services.AuthService import AuthService
 from app.services.AgendaService import AgendaService
-from app.schemas.Agenda import AgendaCreate, AgendaOut, AgendaUpdate
+from app.schemas.Agenda import AgendaCreate, AgendaOut, AgendaUpdate, FirstMeetingIn
 
 UNAUTHORIZED_MSG = "Usuario no autenticado. Debe iniciar sesión para poder visualizar este recurso."
 
@@ -80,3 +80,17 @@ def delete_event(agenda_id: int, request: Request):
     if not ok:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No se encontró el evento o no tiene permisos.")
     return {"deleted": True, "id": agenda_id}
+
+
+
+@router.post("/{case_id}/first-meeting", status_code=status.HTTP_201_CREATED, response_model=AgendaOut,
+             description="Crea la primera reunión del caso (título/descripcion automáticos)")
+def create_first_meeting(case_id: int, payload: FirstMeetingIn, request: Request):
+    jwt = request.cookies.get("accessToken")
+    user = AuthService.get_active_user(jwt)
+    if not user:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=UNAUTHORIZED_MSG)
+
+    return AgendaService.create_first_meeting(
+    case_id=case_id, meeting_date=payload.meeting_date, user=user
+)
