@@ -120,7 +120,7 @@ async def get_case_files(case_id: int, request: Request):
     if not LegalCaseService.case_exists(case_id):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=NOT_FOUND_MSG)
     files = LegalCaseService.get_all_files(case_id, user)
-    if not files:
+    if files is False:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No cuenta con los permisos para ver los archivos de este caso")
     return files
 
