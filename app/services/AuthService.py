@@ -3,6 +3,7 @@
 from app.services.utils.hash.Hash import Hash
 from app.database.database import SessionLocal
 from app.database.models import User
+from app.database.enums import StatusEnum
 from app.schemas.enums import Status
 from app.schemas.RegisterRequest import RegisterRequest, RegisterResponse
 from app.services.JWTService import JWTService
@@ -33,8 +34,7 @@ class AuthService:
             return False
         with SessionLocal() as session:
             return session.query(User).filter(User.id == user_id).first()
-
-    @staticmethod    
+ 
     def register(self, payload: RegisterRequest) -> RegisterResponse:
         """Register a new user"""
         with SessionLocal() as session:
