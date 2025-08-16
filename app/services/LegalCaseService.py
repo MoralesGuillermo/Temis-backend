@@ -204,7 +204,7 @@ class LegalCaseService:
             filename = file.file_name
         file_stream, content_type = storage.get(filepath)
         if not file_stream:
-            return False, False, False
+            return False, False
         return file_stream, content_type, filename
     
     @staticmethod
