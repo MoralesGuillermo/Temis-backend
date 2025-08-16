@@ -1,10 +1,13 @@
 # app/services/AgendaService.py
 from typing import Optional, List
-from datetime import datetime
+from datetime import datetime, time, timezone
+from sqlalchemy import select
+from fastapi import HTTPException, status
 
 from app.database.database import SessionLocal
-from app.database.models import Agenda, User
+from app.database.models import Agenda, User, LegalCase
 from app.schemas.Agenda import AgendaOut, AgendaCreate , AgendaUpdate
+
 
 class AgendaService:
     @staticmethod
@@ -107,5 +110,49 @@ class AgendaService:
             session.commit()
             return True
 
- 
-            return [AgendaOut.model_validate(x) for x in items]
+    @staticmethod
+    def create_first_meeting(case_id: int, meeting_date, user: "User") -> AgendaOut:
+        """
+        Crea la 'Primera reunión' de un caso, generando título/descripcion y tags.
+        Evita duplicados por (case_id, first_meeting).
+        """
+        with SessionLocal() as session:
+            case = session.get(LegalCase, case_id)
+            if not case:
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Case not found")
+
+            # Verifica pertenencia a la misma cuenta (ajusta si usas otro control de acceso)
+            if case.account_id != user.account_id:
+                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized for this case")
+
+            # Idempotencia: si ya existe un first_meeting para este caso, devolverlo
+            existing = session.execute(
+                select(Agenda).where(
+                    Agenda.account_id == user.account_id,
+                    Agenda.user_id == user.id,  # si quieres que sea por usuario, déjalo; si debe ser por cuenta, quita esta línea
+                    Agenda.tags.contains(["first_meeting", f"case:{case_id}"])
+                )
+            ).scalars().first()
+            if existing:
+                return AgendaOut.model_validate(existing)
+
+            # Construir título y descripción
+            title = f"Primera reunión – {case.title}"
+            desc = f"Reunión inicial del caso '{case.title}'."
+            if case.description:
+                desc += f" {case.description[:200]}"
+
+            # Convertir date -> datetime a las 09:00 (UTC) para due_date
+            start_dt = datetime.combine(meeting_date, time(9, 0)).replace(tzinfo=timezone.utc)
+
+            payload = AgendaCreate(
+                event_name=title,
+                description=desc,
+                due_date=start_dt,
+                tags=["case", f"case:{case_id}", "first_meeting"]
+            )
+
+            # Crea mediante tu servicio existente
+            from app.services.AgendaService import AgendaService
+            created = AgendaService.create_event(payload, user)
+            return created 
