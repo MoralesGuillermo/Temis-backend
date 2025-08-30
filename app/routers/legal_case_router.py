@@ -195,5 +195,10 @@ async def get_file(case_id: int, file_id, request: Request):
     return StreamingResponse(file_stream, media_type=content_type)
         
 
-
-
+@router.get("/cases/{page}", status_code=status.HTTP_200_OK, description="Conseguir paginados los casos de un usuario")
+def get_cases_paginated(request: Request, page: int=0, page_size: int=10,):
+    jwt = request.cookies.get("accessToken")
+    user = AuthService.get_active_user(jwt)
+    if not user:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Usuario no autenticado. Debe autenticarse para actualizar este recurso.")
+    return LegalCaseService.get_cases_by_page(user, page, page_size)
