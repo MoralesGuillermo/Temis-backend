@@ -225,6 +225,18 @@ class LegalCaseService:
             session.add(file)
             session.commit()
             return FileOut.model_validate(file)
+        
+
+    @staticmethod
+    def get_cases_by_page(user: User, page: int=0, page_size: int=10) -> list[LegalCaseOut] | bool:
+        """Retrieve all the files' data of a case"""
+        offset = page_size * page
+        cases_out = []
+        with SessionLocal() as session:
+            cases =  session.query(LegalCase).filter(LegalCase.users.any(User.id == user.id)).offset(offset).limit(page_size)
+            for case in cases:
+                cases_out.append(LegalCaseOut.model_validate(case))
+            return cases_out
 
             
     @staticmethod

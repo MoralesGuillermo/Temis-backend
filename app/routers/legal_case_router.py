@@ -24,7 +24,8 @@ NOT_FOUND_MSG = "No se encontró el caso peticionado."
 router = APIRouter(prefix="/legal", tags=["legal case"])
 
 
-@router.get("/get", status_code=status.HTTP_200_OK, response_model=LegalCaseOut, description="Retorna los datos de un caso si el usuario está autorizado a verlo")
+@router.get("/get", status_code=status.HTTP_200_OK, response_model=LegalCaseOut, 
+            description="Retorna los datos de un caso si el usuario está autorizado a verlo")
 def get_legal_case(case_id: int, request: Request):
     jwt = request.cookies.get("accessToken")
     user = AuthService.get_active_user(jwt)
@@ -39,7 +40,8 @@ def get_legal_case(case_id: int, request: Request):
     return case
 
 
-@router.post("/new", status_code=status.HTTP_200_OK, response_model=LegalCaseOut, description="Crea un nuevo caso, asignando cliente, notas y guardando archivos")
+@router.post("/new", status_code=status.HTTP_200_OK, response_model=LegalCaseOut, 
+             description="Crea un nuevo caso, asignando cliente, notas y guardando archivos")
 def new_case(new_case_data: NewCaseData, request: Request):
     jwt = request.cookies.get("accessToken")
     user = AuthService.get_active_user(jwt)
@@ -52,16 +54,19 @@ def new_case(new_case_data: NewCaseData, request: Request):
     new_case = LegalCaseService.new_case(new_case_data, user, files=None)
     
     if not new_case:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No se pudo crear el caso. Por favor vuelva a intentarlo y verifique los datos")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, 
+                            detail="No se pudo crear el caso. Por favor vuelva a intentarlo y verifique los datos")
     return new_case
 
 
-@router.put("/update/notes", status_code=status.HTTP_200_OK, response_model=LegalCaseOut, description="Actualiza las notas de un caso legal si el usuario tiene los permisos")
+@router.put("/update/notes", status_code=status.HTTP_200_OK, response_model=LegalCaseOut, 
+            description="Actualiza las notas de un caso legal si el usuario tiene los permisos")
 async def update_legal_case_notes(case_update: LegalCaseNotesUpdate, request: Request):
     jwt = request.cookies.get("accessToken")
     user = AuthService.get_active_user(jwt)
     if not user:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Usuario no autenticado. Debe autenticarse para actualizar este recurso.")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, 
+                            detail="Usuario no autenticado. Debe autenticarse para actualizar este recurso.")
     if not LegalCaseService.case_exists(case_update.id):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=NOT_FOUND_MSG)
     updated_case = LegalCaseService.update_notes(case_update.id, case_update.notes, user)
@@ -111,12 +116,14 @@ async def update_case(case_id: int, case_update: dict, request: Request):
     
     return updated_case
 
-@router.get("/files/all", status_code=status.HTTP_200_OK, response_model=List[FileOut], description="Retorna los datos de los archivos de un caso (No retorna los archivos como tal)")
+@router.get("/files/all", status_code=status.HTTP_200_OK, response_model=List[FileOut],
+             description="Retorna los datos de los archivos de un caso (No retorna los archivos como tal)")
 async def get_case_files(case_id: int, request: Request):
     jwt = request.cookies.get("accessToken")
     user = AuthService.get_active_user(jwt)
     if not user:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Usuario no autenticado. Debe autenticarse para actualizar este recurso.")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, 
+                            detail="Usuario no autenticado. Debe autenticarse para actualizar este recurso.")
     if not LegalCaseService.case_exists(case_id):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=NOT_FOUND_MSG)
     files = LegalCaseService.get_all_files(case_id, user)
@@ -124,12 +131,14 @@ async def get_case_files(case_id: int, request: Request):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No cuenta con los permisos para ver los archivos de este caso")
     return files
 
-@router.get("/files/{page}", status_code=status.HTTP_200_OK, response_model=List[FileOut], description="Retorna los datos de los archivos de un caso (No retorna los archivos como tal)")
+@router.get("/files/{page}", status_code=status.HTTP_200_OK, response_model=List[FileOut], 
+            description="Retorna los datos de los archivos de un caso (No retorna los archivos como tal)")
 async def get_case_files_by_page(case_id: int, request: Request, page: int=0, page_size: int=10):
     jwt = request.cookies.get("accessToken")
     user = AuthService.get_active_user(jwt)
     if not user:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Usuario no autenticado. Debe autenticarse para actualizar este recurso.")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, 
+                            detail="Usuario no autenticado. Debe autenticarse para actualizar este recurso.")
     if not LegalCaseService.case_exists(case_id):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=NOT_FOUND_MSG)
     files = LegalCaseService.get_files_by_page(case_id, user, page, page_size)
@@ -144,7 +153,8 @@ async def get_case_file_amount(case_id: int, request: Request):
     jwt = request.cookies.get("accessToken")
     user = AuthService.get_active_user(jwt)
     if not user:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Usuario no autenticado. Debe autenticarse para actualizar este recurso.")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, 
+                            detail="Usuario no autenticado. Debe autenticarse para actualizar este recurso.")
     if not LegalCaseService.case_exists(case_id):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=NOT_FOUND_MSG)
     file_amount = LegalCaseService.file_amount(case_id, user)
@@ -153,12 +163,14 @@ async def get_case_file_amount(case_id: int, request: Request):
     return {"amount": file_amount}
 
 
-@router.post("/file/upload", status_code=status.HTTP_200_OK, response_model=FileOut, description="Guarda y sube un archivo en la DB y el Blob Storage")
+@router.post("/file/upload", status_code=status.HTTP_200_OK, response_model=FileOut, 
+             description="Guarda y sube un archivo en la DB y el Blob Storage")
 async def upload_file(case_id: int,  request: Request, file: UploadFile = File(...)):
     jwt = request.cookies.get("accessToken")
     user = AuthService.get_active_user(jwt)
     if not user:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Usuario no autenticado. Debe autenticarse para actualizar este recurso.")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, 
+                            detail="Usuario no autenticado. Debe autenticarse para actualizar este recurso.")
     if not LegalCaseService.case_exists(case_id):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=NOT_FOUND_MSG)
     if not LegalCaseService.authorized_user(case_id, user):
@@ -174,7 +186,8 @@ async def upload_file(case_id: int,  request: Request, file: UploadFile = File(.
     object_name = f"{case_id}/{file.filename}"
     file_was_uploaded = LegalCaseService.upload_file_to_storage(object_name,  file, STORAGE)
     if not file_was_uploaded:
-        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="No se pudo guardar el archivo en la nube. Favor intente mas tarde.")
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, 
+                            detail="No se pudo guardar el archivo en la nube. Favor intente mas tarde.")
     saved_file = LegalCaseService.save_file(case_id, user, file)
     return saved_file
 
@@ -184,7 +197,8 @@ async def get_file(case_id: int, file_id, request: Request):
     jwt = request.cookies.get("accessToken")
     user = AuthService.get_active_user(jwt)
     if not user:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Usuario no autenticado. Debe autenticarse para actualizar este recurso.")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, 
+                            detail="Usuario no autenticado. Debe autenticarse para actualizar este recurso.")
     if not LegalCaseService.case_exists(case_id):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=NOT_FOUND_MSG)
     if not LegalCaseService.authorized_user(case_id, user):
@@ -195,5 +209,11 @@ async def get_file(case_id: int, file_id, request: Request):
     return StreamingResponse(file_stream, media_type=content_type)
         
 
-
-
+@router.get("/cases/{page}", status_code=status.HTTP_200_OK, description="Conseguir paginados los casos de un usuario")
+def get_cases_paginated(request: Request, page: int=0, page_size: int=10,):
+    jwt = request.cookies.get("accessToken")
+    user = AuthService.get_active_user(jwt)
+    if not user:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, 
+                            detail="Usuario no autenticado. Debe autenticarse para actualizar este recurso.")
+    return LegalCaseService.get_cases_by_page(user, page, page_size)
